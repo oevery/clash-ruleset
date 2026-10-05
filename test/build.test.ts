@@ -34,6 +34,44 @@ async function sources(t: TestContext, documents: Record<string, string>) {
   return `http://127.0.0.1:${address.port}`
 }
 
+it('builds exact blocking hosts domains and rejects non-blocking or malformed hosts', async (t) => {
+  const outDir = await workspace(t)
+  const base = await sources(t, {
+    '/hosts': '\uFEFF# NoCoin-style hosts\r\n0.0.0.0 Miner.Example alias.example # comment\r\n127.0.0.1 localhost\n::1 ip6-localhost ipv6.example\n0.0.0.0 miner.example\n',
+    '/invalid': '192.0.2.1 redirected.example\n',
+    '/missing': '0.0.0.0\n',
+  })
+  const result = await build({ outDir, mrs: false, rulesets: [defineRuleset('hosts', {
+    sources: [fromUrl(`${base}/hosts`, { behavior: 'domain', format: 'hosts' })],
+  })] })
+  assert.equal(result.rulesets[0].count, 3)
+  assert.equal(await readFile(join(outDir, 'hosts-domain.txt'), 'utf8'), 'alias.example\nipv6.example\nminer.example\n')
+  for (const [path, behavior] of [['invalid', 'domain'], ['missing', 'domain'], ['hosts', 'classical']] as const) {
+    await assert.rejects(build({ outDir, mrs: false, rulesets: [defineRuleset('hosts', {
+      sources: [fromUrl(`${base}/${path}`, { behavior, format: 'hosts' })],
+    })] }), /Failed to load hosts source/)
+  }
+})
+
+it('limits protection output to domains and excludes IP literals and source markers', async (t) => {
+  const outDir = await workspace(t)
+  const protections = configuredRulesets.filter(rule => ['security', 'ads'].includes(rule.name))
+  const result = await build({ outDir, mrs: false, rulesets: protections.map(rule => ({
+    ...rule,
+    sources: [],
+    add: {
+      domain: ['blocked.example', '192.0.2.1', '+.192.0.2.2', '::1', '7h15.ru1353t.1s.m4d3.by.5ukk4w.skk.moe'],
+      ipcidr: ['192.0.2.0/24'],
+      classical: ['DOMAIN-KEYWORD,ad', 'DOMAIN-REGEX,.*ads.*'],
+    },
+  })) })
+  for (const rule of result.rulesets) {
+    assert.equal(rule.count, 1)
+    assert.deepEqual(Object.keys(rule.files), ['domain'])
+    assert.equal(await readFile(join(outDir, rule.readable), 'utf8'), 'DOMAIN,blocked.example\n')
+  }
+})
+
 it('aggregates URL formats, filters additions, deduplicates and sorts each category', async (t) => {
   const outDir = await workspace(t)
   const base = await sources(t, {

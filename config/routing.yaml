@@ -6,6 +6,14 @@ anchor-rule:
   ip_mrs: &ip_mrs { type: http, behavior: ipcidr, format: mrs, interval: 43200 }
 
 rule-providers:
+  security-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/security-domain.mrs'
+    path: ./rulesets/security-domain.mrs
+  ads-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/ads-domain.mrs'
+    path: ./rulesets/ads-domain.mrs
   direct-domain:
     <<: *domain_mrs
     url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/direct-domain.mrs'
@@ -88,6 +96,8 @@ rule-providers:
     path: ./rulesets/fakeip_filter-domain.mrs
 
 rules:
+  - RULE-SET,security-domain,拦截防护
+  - RULE-SET,ads-domain,拦截防护
   - RULE-SET,direct-domain,直连
   - RULE-SET,direct-classical,直连,no-resolve
   - RULE-SET,direct-ip,直连,no-resolve

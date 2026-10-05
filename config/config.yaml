@@ -104,6 +104,8 @@ anchor-proxy:
   other: &other '(?i)^(?!.*(?:(?:🇭🇰|香港|深港|沪港|滬港|hong[ _-]*kong|(?:^|[^A-Za-z])hk(?=$|[^A-Za-z]))|(?:🇹🇼|台湾|臺灣|台北|臺北|taiwan|(?:^|[^A-Za-z])tw(?=$|[^A-Za-z]))|(?:🇸🇬|新加坡|狮城|獅城|singapore|(?:^|[^A-Za-z])sg(?=$|[^A-Za-z]))|(?:🇯🇵|日本|东京|東京|大阪|japan|(?:^|[^A-Za-z])jp(?=$|[^A-Za-z]))|(?:🇺🇸|🇺🇲|美国|美國|美东|美西|洛杉矶|纽约|united[ _-]*states|(?:^|[^A-Za-z])us(?:a)?(?=$|[^A-Za-z])))(?!.*(?:转|→|->))).*$'
 
 proxy-groups:
+  # PASS 继续后续分流；DIRECT 会强制直连，不能用来表示关闭拦截。
+  - { name: 拦截防护, type: select, proxies: [REJECT, PASS] }
   - { name: 代理, type: select, proxies: [香港自动, 香港, 新加坡, 台湾, 日本, 美国, 其他区域, 全部节点, 直连] }
   - { name: 兜底, type: select, proxies: [直连, 代理] }
   # 海外影音及相关媒体服务按需手动选择地区；默认跟随代理。
@@ -138,6 +140,14 @@ anchor-rule:
   ip_mrs: &ip_mrs { type: http, behavior: ipcidr, format: mrs, interval: 43200 }
 
 rule-providers:
+  security-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/security-domain.mrs'
+    path: ./rulesets/security-domain.mrs
+  ads-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/ads-domain.mrs'
+    path: ./rulesets/ads-domain.mrs
   direct-domain:
     <<: *domain_mrs
     url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/direct-domain.mrs'
@@ -220,6 +230,8 @@ rule-providers:
     path: ./rulesets/fakeip_filter-domain.mrs
 
 rules:
+  - RULE-SET,security-domain,拦截防护
+  - RULE-SET,ads-domain,拦截防护
   - RULE-SET,direct-domain,直连
   - RULE-SET,direct-classical,直连,no-resolve
   - RULE-SET,direct-ip,直连,no-resolve

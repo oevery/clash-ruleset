@@ -94,6 +94,21 @@ export function parseEntries(entries: RuleEntries | undefined, name: string, ope
 }
 
 export function parseSource(content: string, source: Pick<Source, 'behavior' | 'format'>): Rule[] {
+  if (source.format === 'hosts') {
+    if (source.behavior !== 'domain')
+      throw new Error('Hosts sources require domain behavior')
+    return content.replace(/^\uFEFF/, '').split(/\r?\n/).flatMap((line) => {
+      const entry = line.split('#')[0].trim()
+      if (!entry)
+        return []
+      const [address, ...domains] = entry.split(/\s+/)
+      if (!['0.0.0.0', '127.0.0.1', '::', '::1'].includes(address) || !domains.length)
+        throw new Error(`Invalid blocking hosts entry: ${entry}`)
+      return domains
+        .filter(domain => !['localhost', 'localhost.localdomain', 'ip6-localhost', 'ip6-loopback'].includes(domain.toLowerCase()))
+        .map(domain => parseRule(domain, 'domain'))
+    })
+  }
   let lines: string[]
   if (source.format === 'yaml') {
     const document: unknown = parse(content)

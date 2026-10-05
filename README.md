@@ -94,6 +94,8 @@ RULESET_BASE_URL=https://raw.githubusercontent.com/oevery/mihomo-config/release/
 
 | 分类 | 主要内容 | 策略 |
 | --- | --- | --- |
+| `security` | Sukka 独立钓鱼、URLhaus 在线恶意域名、NoCoin 挖矿域名 | 拦截防护 |
+| `ads` | blackmatrix AdvertisingLite，仅域名规则 | 拦截防护 |
 | `direct` | Private、Tracker、个人直连及进程规则 | 直连 |
 | `ai` | MetaCubeX AI / Apple Intelligence、Sukka AI 与语音 IP | AI |
 | `domestic_services` | Apple / Microsoft 国内服务、国内游戏下载和 CDN 例外 | 国内 |
@@ -106,7 +108,11 @@ RULESET_BASE_URL=https://raw.githubusercontent.com/oevery/mihomo-config/release/
 | `domestic` | MetaCubeX cn 域名、CN IP 与个人补充 | 国内 |
 | `fakeip_filter` | Meta private、ShellCrash 兼容补充与个人域名 | 仅 DNS |
 
-每个业务分类按 domain → classical → ip 相邻排列，最后为 `MATCH,兜底`。默认不加载广告列表，也不设独立 CDN 分类；专属资源跟随业务，其余请求继续匹配后续规则。
+每个业务分类按 domain → classical → ip 相邻排列，最后为 `MATCH,兜底`。不设独立 CDN 分类；专属资源跟随业务，其余请求继续匹配后续规则。
+
+“拦截防护”统一控制安全防护与去广告，优先于普通直连及业务分流，默认选择 `REJECT`；选择 `PASS` 会同时关闭两类拦截并继续后续分流，不会强制直连。底层保留 `security` 和 `ads` 两套规则，分别维护来源与误杀例外，不提供独立开关。安全防护使用 Sukka 的独立钓鱼列表，以及独立的 URLhaus 在线恶意域名和 NoCoin hosts 名单，不加载 Sukka 综合 reject/reject_extra。去广告仅取 AdvertisingLite 的域名部分，不加载独立 Privacy/Hijacking、追踪或遥测列表；广告域名与追踪用途仍可能重叠。两类均排除 IP 字面量、IP 段、关键词和逻辑规则，不做 DNS 层广告屏蔽。
+
+这些名单只是辅助防护，不保证零误杀或完整安全覆盖；NoCoin 会同时拦截自愿与非自愿的浏览器挖矿。误杀在 `rulesets/protection.ts` 对应分类的 `remove.domain` 中排除；若同时命中两类，需分别排除。新增规则必须先发布到 `release`，再部署引用它们的完整配置。
 
 `global_media` 以 Sukka 的 `non_ip/stream` 和 `ip/stream` 为主，Netflix IP 与 Hulu 补充覆盖，不额外合并 GlobalMedia 等大型聚合。保留包括 `PROCESS-NAME,music`、`PROCESS-NAME,tv` 在内的平台进程规则。不同平台需要同时使用不同地区时，应增加前置的平台分类与策略组。
 
@@ -157,7 +163,7 @@ const example = defineRuleset('example', {
 
 `remove` 只删除被完整覆盖的条目，不从父域或大网段中挖除例外。保留父域但让部分子域走其他策略，应增加前置路由。未命中的删除项允许存在，非法规则会中止构建。不跨分类去重，不推断正则或逻辑规则的语义等价，也不将 IPv4-mapped IPv6 当作 IPv4。
 
-来源支持 `domain` / `ipcidr` / `classical` 和 `text` / `yaml`；YAML 使用字符串 `payload` 数组。输入格式不决定最终分区。高级 `filter` / `sort` 接收规范化的 `Rule`，通过 `behavior` 区分类别；`value` 是分区值，`text` 是完整 classical 文本，只有 classical 提供 `type` / `options`。完整接口见 `src/types.ts`。
+来源支持 `domain` / `ipcidr` / `classical` 和 `text` / `yaml`；YAML 使用字符串 `payload` 数组。额外支持仅用于 `domain` 的 `hosts` 格式：只接受指向 `0.0.0.0`、`127.0.0.1`、`::` 或 `::1` 的阻断条目，支持多域名和行尾注释，忽略本机名称，保留精确域名语义。输入格式不决定最终分区。高级 `filter` / `sort` 接收规范化的 `Rule`，通过 `behavior` 区分类别；`value` 是分区值，`text` 是完整 classical 文本，只有 classical 提供 `type` / `options`。完整接口见 `src/types.ts`。
 
 ## 目录与产物
 
@@ -214,6 +220,6 @@ PR 不发布；其他触发成功后更新 `release` 分支，无变化不提交
 
 ## 上游与许可
 
-规则来源包括 MetaCubeX/meta-rules-dat、Sukka Ruleset、blackmatrix7/ios_rule_script 和 juewuy/ShellCrash；具体地址集中在 `rulesets/upstreams.ts`。
+规则来源包括 MetaCubeX/meta-rules-dat、Sukka Ruleset、blackmatrix7/ios_rule_script、juewuy/ShellCrash、malware-filter/urlhaus-filter 和 hoshsadiq/adblock-nocoin-list；具体地址集中在 `rulesets/upstreams.ts`。
 
 本仓库许可证见 `LICENSE`（AGPL-3.0）。引用与分发上游规则时，仍需遵守各来源的许可和署名要求。

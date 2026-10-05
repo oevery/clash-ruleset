@@ -56,6 +56,8 @@ it('connects emitted partitions by business and limits DNS resolution to domesti
     assert(providers[rule.split(',')[1]], rule)
   assert(!rules.some(rule => rule.includes('fakeip_filter-domain,')))
   assert.deepEqual(rules, [
+    'RULE-SET,security-domain,拦截防护',
+    'RULE-SET,ads-domain,拦截防护',
     'RULE-SET,direct-domain,直连',
     'RULE-SET,direct-ip,直连,no-resolve',
     'RULE-SET,ai-domain,AI',

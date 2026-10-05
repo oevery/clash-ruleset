@@ -15,3 +15,7 @@ export function blackmatrix(name: string) {
 }
 
 export const shellCrashFakeip = fromUrl('https://raw.githubusercontent.com/juewuy/ShellCrash/dev/public/fake_ip_filter.list', { behavior: 'domain', format: 'text' })
+
+// 独立安全名单，避免为恶意软件和挖矿防护引入综合追踪/隐私拦截包。
+export const urlhaus = fromUrl('https://urlhaus-filter.pages.dev/urlhaus-filter-domains-online.txt', { behavior: 'domain', format: 'text' })
+export const noCoin = fromUrl('https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/hosts.txt', { behavior: 'domain', format: 'hosts' })

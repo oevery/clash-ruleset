@@ -1,5 +1,5 @@
 export type Behavior = 'domain' | 'ipcidr' | 'classical'
-export type SourceFormat = 'text' | 'yaml'
+export type SourceFormat = 'text' | 'yaml' | 'hosts'
 
 export interface Source {
   readonly url: string
