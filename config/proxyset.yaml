@@ -4,7 +4,7 @@ anchor-proxy:
   preferred_proxy: &preferred_proxy { type: select, proxies: [代理, 香港, 台湾, 新加坡, 日本, 美国, 其他区域, 全部节点, 直连] }
   preferred_direct: &preferred_direct { type: select, proxies: [直连, 代理, 香港, 台湾, 新加坡, 日本, 美国, 其他区域, 全部节点] }
   # 空组拒绝连接；直连仅通过明确的“直连”策略组选择。
-  native_nodes: &native_nodes { type: select, include-all: true, exclude-type: direct, exclude-filter: *exclude_node_info, empty-fallback: REJECT }
+  native_nodes: &native_nodes { type: select, include-all: true, exclude-type: direct|easytier, exclude-filter: *exclude_node_info, empty-fallback: REJECT }
   # 匹配出口地区：地区名之后若还有“转”或箭头，则不是最终出口。
   # 英文短码使用字母边界，兼容 HK01/US01，避免误匹配 Australia/Russia。
   hk: &hk '(?i)(?:🇭🇰|香港|深港|沪港|滬港|hong[ _-]*kong|(?:^|[^A-Za-z])hk(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
