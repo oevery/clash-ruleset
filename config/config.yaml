@@ -1,0 +1,242 @@
+anchor-provider:
+  pf: &pf { type: file, health-check: { enable: true, url: https://www.gstatic.com/generate_204, interval: 300, expected-status: 204 } }
+  ph: &ph { type: http, interval: 43200, proxy: DIRECT, health-check: { enable: true, url: https://www.gstatic.com/generate_204, interval: 300, expected-status: 204 } }
+
+proxy-providers:
+  provider1:
+    <<: *ph
+    url: https://example.com/subscription.yaml
+    path: ./proxy_providers/provider1.yaml
+    # 仅在跨机场节点实际同名时按需添加前缀
+    # override:
+    #   additional-prefix: "[provider1] "
+    exclude-filter: '(?i)官网|用户群|漏洞|账户|过期时间|剩余流量|重置|套餐|订阅|expire|traffic'
+    # 可选：只对名称确实包含倍率标签的机场启用，否则会排除全部未标注节点。
+    # 仅保留名称标注倍率不大于1的节点
+    # 不使用单词边界，兼容倍率数值紧贴中文的节点名称
+    # filter: '.*倍率[:：]?\s*(?:0(?:\.\d+)?|1(?:\.0+)?)(?![\d.]).*'
+    # 本地 provider 示例
+    # provider2:
+    #   <<: *pf
+    #   path: ./proxy_providers/provider2.yaml
+
+mixed-port: 7890 # HTTP(S) 和 SOCKS 代理混合端口
+# redir-port: 7893  # 透明代理端口
+# tproxy-port: 7894 # TProxy 透明代理端口
+
+allow-lan: false # 允许局域网连接
+
+mode: rule
+
+log-level: info # 日志等级 silent/error/warning/info/debug
+
+ipv6: true
+
+external-controller: 127.0.0.1:9090
+secret: CHANGE_ME # 使用前设置控制器口令
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+unified-delay: true # 统一延迟
+tcp-concurrent: true # TCP 并发
+
+dns:
+  enable: true
+  cache-algorithm: arc
+  listen: 127.0.0.1:1053
+  ipv6: true
+  enhanced-mode: fake-ip
+  # DNS 连接遵循规则；关键上游显式指定出口，避免节点解析依赖代理。
+  respect-rules: true
+  default-nameserver:
+    - 'https://223.5.5.5/dns-query#DIRECT'
+  # 专用于节点域名解析的 DNS 服务器
+  proxy-server-nameserver:
+    - 'https://doh.pub/dns-query#DIRECT'
+    - 'https://dns.alidns.com/dns-query#DIRECT'
+  # 默认解析通过代理，国内域名由 nameserver-policy 使用直连 DNS。
+  nameserver:
+    - 'https://dns.cloudflare.com/dns-query#代理'
+    - 'https://dns.google/dns-query#代理'
+  direct-nameserver:
+    - 'https://doh.pub/dns-query#DIRECT'
+    - 'https://dns.alidns.com/dns-query#DIRECT'
+  nameserver-policy:
+    'rule-set:domestic-domain,domestic_services-domain,apple-domain,direct-domain':
+      - 'https://doh.pub/dns-query#DIRECT'
+      - 'https://dns.alidns.com/dns-query#DIRECT'
+  fake-ip-filter:
+    - 'rule-set:fakeip_filter-domain'
+
+tun:
+  enable: true
+  stack: mips
+  dns-hijack: ['any:53', 'tcp://any:53']
+  auto-route: true # 配置路由表
+  # auto-redirect: true # Linux/Android 按需启用重定向连接
+  auto-detect-interface: true # 自动识别出口网卡
+  route-exclude-address:
+    - 192.168.0.0/16
+    - 10.0.0.0/8
+    - 100.64.0.0/10
+    - fc00::/7
+  # 仅 Android 按需启用包名排除，其他平台不使用此项。
+  # exclude-package:
+  #   - com.tailscale.ipn
+
+# 地区筛选由 Mihomo 统一处理，适用于内嵌节点和远程 Provider。
+anchor-proxy:
+  exclude_node_info: &exclude_node_info '(?i)官网|用户群|漏洞|账户|过期时间|剩余流量|重置|套餐|订阅|expire|traffic'
+  preferred_proxy: &preferred_proxy { type: select, proxies: [代理, 香港, 台湾, 新加坡, 日本, 美国, 其他区域, 全部节点, 直连] }
+  preferred_direct: &preferred_direct { type: select, proxies: [直连, 代理, 香港, 台湾, 新加坡, 日本, 美国, 其他区域, 全部节点] }
+  # 空组拒绝连接；直连仅通过明确的“直连”策略组选择。
+  native_nodes: &native_nodes { type: select, include-all: true, exclude-type: direct, exclude-filter: *exclude_node_info, empty-fallback: REJECT }
+  # 匹配出口地区：地区名之后若还有“转”或箭头，则不是最终出口。
+  # 英文短码使用字母边界，兼容 HK01/US01，避免误匹配 Australia/Russia。
+  hk: &hk '(?i)(?:🇭🇰|香港|深港|沪港|滬港|hong[ _-]*kong|(?:^|[^A-Za-z])hk(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  taiwan: &taiwan '(?i)(?:🇹🇼|台湾|臺灣|台北|臺北|taiwan|(?:^|[^A-Za-z])tw(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  singapore: &singapore '(?i)(?:🇸🇬|新加坡|狮城|獅城|singapore|(?:^|[^A-Za-z])sg(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  japan: &japan '(?i)(?:🇯🇵|日本|东京|東京|大阪|japan|(?:^|[^A-Za-z])jp(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  us: &us '(?i)(?:🇺🇸|🇺🇲|美国|美國|美东|美西|洛杉矶|纽约|united[ _-]*states|(?:^|[^A-Za-z])us(?:a)?(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  # 其他区域是上述地区的补集，调整地区别名时同步此表达式。
+  other: &other '(?i)^(?!.*(?:(?:🇭🇰|香港|深港|沪港|滬港|hong[ _-]*kong|(?:^|[^A-Za-z])hk(?=$|[^A-Za-z]))|(?:🇹🇼|台湾|臺灣|台北|臺北|taiwan|(?:^|[^A-Za-z])tw(?=$|[^A-Za-z]))|(?:🇸🇬|新加坡|狮城|獅城|singapore|(?:^|[^A-Za-z])sg(?=$|[^A-Za-z]))|(?:🇯🇵|日本|东京|東京|大阪|japan|(?:^|[^A-Za-z])jp(?=$|[^A-Za-z]))|(?:🇺🇸|🇺🇲|美国|美國|美东|美西|洛杉矶|纽约|united[ _-]*states|(?:^|[^A-Za-z])us(?:a)?(?=$|[^A-Za-z])))(?!.*(?:转|→|->))).*$'
+
+proxy-groups:
+  - { name: 代理, type: select, proxies: [香港自动, 香港, 新加坡, 台湾, 日本, 美国, 其他区域, 全部节点, 直连] }
+  - { name: 兜底, type: select, proxies: [直连, 代理] }
+  # 海外影音及相关媒体服务按需手动选择地区；默认跟随代理。
+  - { name: 国外媒体, <<: *preferred_proxy }
+  # 默认出口保持代理；AI 的实际服务可用性需要自行验证，不使用跨地区自动切换。
+  - { name: AI, type: select, proxies: [代理, 美国, 新加坡, 日本, 台湾, 香港, 其他区域, 全部节点, 直连] }
+  - { name: Telegram, <<: *preferred_proxy }
+  - { name: Microsoft, <<: *preferred_proxy }
+  - { name: Apple, <<: *preferred_direct }
+  - { name: 游戏下载, <<: *preferred_direct }
+  - { name: 测速, <<: *preferred_direct }
+  - { name: 国内, type: select, proxies: [直连, 代理] }
+
+  # 地区组保留手选；只有香港自动执行故障切换，不启用跨地区负载均衡。
+  - { name: 香港自动, <<: *native_nodes, type: fallback, filter: *hk, url: https://www.gstatic.com/generate_204, interval: 300, lazy: true, expected-status: 204 }
+  - { name: 香港, <<: *native_nodes, filter: *hk }
+  - { name: 台湾, <<: *native_nodes, filter: *taiwan }
+  - { name: 新加坡, <<: *native_nodes, filter: *singapore }
+  - { name: 日本, <<: *native_nodes, filter: *japan }
+  - { name: 美国, <<: *native_nodes, filter: *us }
+  - { name: 其他区域, <<: *native_nodes, filter: *other }
+  - { name: 全部节点, <<: *native_nodes }
+
+  # 使用策略组别名，不定义原始代理，避免内嵌输出出现重复的 proxies 键。
+  - { name: 直连, type: select, hidden: true, proxies: [DIRECT] }
+
+anchor-rule:
+  classical: &classical { type: http, behavior: classical, format: text, interval: 43200 }
+  domain: &domain { type: http, behavior: domain, format: text, interval: 43200 }
+  ip: &ip { type: http, behavior: ipcidr, format: text, interval: 43200 }
+  domain_mrs: &domain_mrs { type: http, behavior: domain, format: mrs, interval: 43200 }
+  ip_mrs: &ip_mrs { type: http, behavior: ipcidr, format: mrs, interval: 43200 }
+
+rule-providers:
+  direct-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/direct-domain.mrs'
+    path: ./rulesets/direct-domain.mrs
+  direct-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/direct-ip.mrs'
+    path: ./rulesets/direct-ip.mrs
+  direct-classical:
+    <<: *classical
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/direct-classical.txt'
+    path: ./rulesets/direct-classical.txt
+  ai-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/ai-domain.mrs'
+    path: ./rulesets/ai-domain.mrs
+  ai-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/ai-ip.mrs'
+    path: ./rulesets/ai-ip.mrs
+  ai-classical:
+    <<: *classical
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/ai-classical.txt'
+    path: ./rulesets/ai-classical.txt
+  domestic_services-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/domestic_services-domain.mrs'
+    path: ./rulesets/domestic_services-domain.mrs
+  speedtest-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/speedtest-domain.mrs'
+    path: ./rulesets/speedtest-domain.mrs
+  game_download-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/game_download-domain.mrs'
+    path: ./rulesets/game_download-domain.mrs
+  global_media-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/global_media-domain.mrs'
+    path: ./rulesets/global_media-domain.mrs
+  global_media-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/global_media-ip.mrs'
+    path: ./rulesets/global_media-ip.mrs
+  global_media-classical:
+    <<: *classical
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/global_media-classical.txt'
+    path: ./rulesets/global_media-classical.txt
+  telegram-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/telegram-domain.mrs'
+    path: ./rulesets/telegram-domain.mrs
+  telegram-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/telegram-ip.mrs'
+    path: ./rulesets/telegram-ip.mrs
+  apple-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/apple-domain.mrs'
+    path: ./rulesets/apple-domain.mrs
+  microsoft-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/microsoft-domain.mrs'
+    path: ./rulesets/microsoft-domain.mrs
+  proxy-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/proxy-domain.mrs'
+    path: ./rulesets/proxy-domain.mrs
+  domestic-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/domestic-domain.mrs'
+    path: ./rulesets/domestic-domain.mrs
+  domestic-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/domestic-ip.mrs'
+    path: ./rulesets/domestic-ip.mrs
+  fakeip_filter-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/fakeip_filter-domain.mrs'
+    path: ./rulesets/fakeip_filter-domain.mrs
+
+rules:
+  - RULE-SET,direct-domain,直连
+  - RULE-SET,direct-classical,直连,no-resolve
+  - RULE-SET,direct-ip,直连,no-resolve
+  - RULE-SET,ai-domain,AI
+  - RULE-SET,ai-classical,AI,no-resolve
+  - RULE-SET,ai-ip,AI,no-resolve
+  - RULE-SET,domestic_services-domain,国内
+  - RULE-SET,speedtest-domain,测速
+  - RULE-SET,game_download-domain,游戏下载
+  - RULE-SET,global_media-domain,国外媒体
+  - RULE-SET,global_media-classical,国外媒体,no-resolve
+  - RULE-SET,global_media-ip,国外媒体,no-resolve
+  - RULE-SET,telegram-domain,Telegram
+  - RULE-SET,telegram-ip,Telegram,no-resolve
+  - RULE-SET,apple-domain,Apple
+  - RULE-SET,microsoft-domain,Microsoft
+  - RULE-SET,proxy-domain,代理
+  - RULE-SET,domestic-domain,国内
+  - RULE-SET,domestic-ip,国内
+  - MATCH,兜底

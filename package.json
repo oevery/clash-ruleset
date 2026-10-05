@@ -1,0 +1,33 @@
+{
+  "name": "mihomo-config",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "mihomo": "node scripts/mihomo.ts",
+    "build": "node scripts/build.ts",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run config:check && pnpm test",
+    "config:build": "node scripts/build-config.ts",
+    "config:check": "node scripts/check-config.ts",
+    "config:test": "node scripts/test-config.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "node --import ./scripts/lib/env.ts --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5",
+    "ipaddr.js": "^2.5.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.5.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.12.0",
+    "typescript": "~6.0.3"
+  }
+}

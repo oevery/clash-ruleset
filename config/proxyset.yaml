@@ -1,0 +1,43 @@
+# 地区筛选由 Mihomo 统一处理，适用于内嵌节点和远程 Provider。
+anchor-proxy:
+  exclude_node_info: &exclude_node_info '(?i)官网|用户群|漏洞|账户|过期时间|剩余流量|重置|套餐|订阅|expire|traffic'
+  preferred_proxy: &preferred_proxy { type: select, proxies: [代理, 香港, 台湾, 新加坡, 日本, 美国, 其他区域, 全部节点, 直连] }
+  preferred_direct: &preferred_direct { type: select, proxies: [直连, 代理, 香港, 台湾, 新加坡, 日本, 美国, 其他区域, 全部节点] }
+  # 空组拒绝连接；直连仅通过明确的“直连”策略组选择。
+  native_nodes: &native_nodes { type: select, include-all: true, exclude-type: direct, exclude-filter: *exclude_node_info, empty-fallback: REJECT }
+  # 匹配出口地区：地区名之后若还有“转”或箭头，则不是最终出口。
+  # 英文短码使用字母边界，兼容 HK01/US01，避免误匹配 Australia/Russia。
+  hk: &hk '(?i)(?:🇭🇰|香港|深港|沪港|滬港|hong[ _-]*kong|(?:^|[^A-Za-z])hk(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  taiwan: &taiwan '(?i)(?:🇹🇼|台湾|臺灣|台北|臺北|taiwan|(?:^|[^A-Za-z])tw(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  singapore: &singapore '(?i)(?:🇸🇬|新加坡|狮城|獅城|singapore|(?:^|[^A-Za-z])sg(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  japan: &japan '(?i)(?:🇯🇵|日本|东京|東京|大阪|japan|(?:^|[^A-Za-z])jp(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  us: &us '(?i)(?:🇺🇸|🇺🇲|美国|美國|美东|美西|洛杉矶|纽约|united[ _-]*states|(?:^|[^A-Za-z])us(?:a)?(?=$|[^A-Za-z]))(?!.*(?:转|→|->))'
+  # 其他区域是上述地区的补集，调整地区别名时同步此表达式。
+  other: &other '(?i)^(?!.*(?:(?:🇭🇰|香港|深港|沪港|滬港|hong[ _-]*kong|(?:^|[^A-Za-z])hk(?=$|[^A-Za-z]))|(?:🇹🇼|台湾|臺灣|台北|臺北|taiwan|(?:^|[^A-Za-z])tw(?=$|[^A-Za-z]))|(?:🇸🇬|新加坡|狮城|獅城|singapore|(?:^|[^A-Za-z])sg(?=$|[^A-Za-z]))|(?:🇯🇵|日本|东京|東京|大阪|japan|(?:^|[^A-Za-z])jp(?=$|[^A-Za-z]))|(?:🇺🇸|🇺🇲|美国|美國|美东|美西|洛杉矶|纽约|united[ _-]*states|(?:^|[^A-Za-z])us(?:a)?(?=$|[^A-Za-z])))(?!.*(?:转|→|->))).*$'
+
+proxy-groups:
+  - { name: 代理, type: select, proxies: [香港自动, 香港, 新加坡, 台湾, 日本, 美国, 其他区域, 全部节点, 直连] }
+  - { name: 兜底, type: select, proxies: [直连, 代理] }
+  # 海外影音及相关媒体服务按需手动选择地区；默认跟随代理。
+  - { name: 国外媒体, <<: *preferred_proxy }
+  # 默认出口保持代理；AI 的实际服务可用性需要自行验证，不使用跨地区自动切换。
+  - { name: AI, type: select, proxies: [代理, 美国, 新加坡, 日本, 台湾, 香港, 其他区域, 全部节点, 直连] }
+  - { name: Telegram, <<: *preferred_proxy }
+  - { name: Microsoft, <<: *preferred_proxy }
+  - { name: Apple, <<: *preferred_direct }
+  - { name: 游戏下载, <<: *preferred_direct }
+  - { name: 测速, <<: *preferred_direct }
+  - { name: 国内, type: select, proxies: [直连, 代理] }
+
+  # 地区组保留手选；只有香港自动执行故障切换，不启用跨地区负载均衡。
+  - { name: 香港自动, <<: *native_nodes, type: fallback, filter: *hk, url: https://www.gstatic.com/generate_204, interval: 300, lazy: true, expected-status: 204 }
+  - { name: 香港, <<: *native_nodes, filter: *hk }
+  - { name: 台湾, <<: *native_nodes, filter: *taiwan }
+  - { name: 新加坡, <<: *native_nodes, filter: *singapore }
+  - { name: 日本, <<: *native_nodes, filter: *japan }
+  - { name: 美国, <<: *native_nodes, filter: *us }
+  - { name: 其他区域, <<: *native_nodes, filter: *other }
+  - { name: 全部节点, <<: *native_nodes }
+
+  # 使用策略组别名，不定义原始代理，避免内嵌输出出现重复的 proxies 键。
+  - { name: 直连, type: select, hidden: true, proxies: [DIRECT] }

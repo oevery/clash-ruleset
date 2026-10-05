@@ -1,0 +1,21 @@
+anchor-provider:
+  pf: &pf { type: file, health-check: { enable: true, url: https://www.gstatic.com/generate_204, interval: 300, expected-status: 204 } }
+  ph: &ph { type: http, interval: 43200, proxy: DIRECT, health-check: { enable: true, url: https://www.gstatic.com/generate_204, interval: 300, expected-status: 204 } }
+
+proxy-providers:
+  provider1:
+    <<: *ph
+    url: https://example.com/subscription.yaml
+    path: ./proxy_providers/provider1.yaml
+    # 仅在跨机场节点实际同名时按需添加前缀
+    # override:
+    #   additional-prefix: "[provider1] "
+    exclude-filter: '(?i)官网|用户群|漏洞|账户|过期时间|剩余流量|重置|套餐|订阅|expire|traffic'
+    # 可选：只对名称确实包含倍率标签的机场启用，否则会排除全部未标注节点。
+    # 仅保留名称标注倍率不大于1的节点
+    # 不使用单词边界，兼容倍率数值紧贴中文的节点名称
+    # filter: '.*倍率[:：]?\s*(?:0(?:\.\d+)?|1(?:\.0+)?)(?![\d.]).*'
+    # 本地 provider 示例
+    # provider2:
+    #   <<: *pf
+    #   path: ./proxy_providers/provider2.yaml

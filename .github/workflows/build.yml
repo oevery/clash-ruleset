@@ -1,0 +1,82 @@
+name: Build and publish rulesets
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+concurrency:
+  group: rulesets-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prepare Mihomo
+        run: pnpm run mihomo
+        env:
+          MIHOMO_VERSION: ${{ vars.MIHOMO_VERSION }}
+
+      - run: pnpm run check
+
+      - run: pnpm run build
+        env:
+          RULESET_BASE_URL: ${{ vars.RULESET_BASE_URL }}
+
+      - run: pnpm run config:test
+        env:
+          RULESET_DIR: .output
+
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: rulesets
+          path: .output/
+          include-hidden-files: true
+          if-no-files-found: error
+
+      - name: Publish to release branch
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          repo="https://github.com/$GITHUB_REPOSITORY.git"
+          target="$RUNNER_TEMP/ruleset-release"
+          if git ls-remote --exit-code --heads "$repo" release; then
+            git clone --depth 1 --branch release "$repo" "$target"
+          else
+            git init "$target"
+            git -C "$target" checkout --orphan release
+            git -C "$target" remote add origin "$repo"
+          fi
+          rsync -a --delete --exclude=.git/ .output/ "$target/"
+          cd "$target"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update generated rulesets"
+            git push origin HEAD:release
+          fi

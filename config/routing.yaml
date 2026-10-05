@@ -1,0 +1,110 @@
+anchor-rule:
+  classical: &classical { type: http, behavior: classical, format: text, interval: 43200 }
+  domain: &domain { type: http, behavior: domain, format: text, interval: 43200 }
+  ip: &ip { type: http, behavior: ipcidr, format: text, interval: 43200 }
+  domain_mrs: &domain_mrs { type: http, behavior: domain, format: mrs, interval: 43200 }
+  ip_mrs: &ip_mrs { type: http, behavior: ipcidr, format: mrs, interval: 43200 }
+
+rule-providers:
+  direct-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/direct-domain.mrs'
+    path: ./rulesets/direct-domain.mrs
+  direct-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/direct-ip.mrs'
+    path: ./rulesets/direct-ip.mrs
+  direct-classical:
+    <<: *classical
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/direct-classical.txt'
+    path: ./rulesets/direct-classical.txt
+  ai-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/ai-domain.mrs'
+    path: ./rulesets/ai-domain.mrs
+  ai-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/ai-ip.mrs'
+    path: ./rulesets/ai-ip.mrs
+  ai-classical:
+    <<: *classical
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/ai-classical.txt'
+    path: ./rulesets/ai-classical.txt
+  domestic_services-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/domestic_services-domain.mrs'
+    path: ./rulesets/domestic_services-domain.mrs
+  speedtest-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/speedtest-domain.mrs'
+    path: ./rulesets/speedtest-domain.mrs
+  game_download-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/game_download-domain.mrs'
+    path: ./rulesets/game_download-domain.mrs
+  global_media-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/global_media-domain.mrs'
+    path: ./rulesets/global_media-domain.mrs
+  global_media-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/global_media-ip.mrs'
+    path: ./rulesets/global_media-ip.mrs
+  global_media-classical:
+    <<: *classical
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/global_media-classical.txt'
+    path: ./rulesets/global_media-classical.txt
+  telegram-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/telegram-domain.mrs'
+    path: ./rulesets/telegram-domain.mrs
+  telegram-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/telegram-ip.mrs'
+    path: ./rulesets/telegram-ip.mrs
+  apple-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/apple-domain.mrs'
+    path: ./rulesets/apple-domain.mrs
+  microsoft-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/microsoft-domain.mrs'
+    path: ./rulesets/microsoft-domain.mrs
+  proxy-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/proxy-domain.mrs'
+    path: ./rulesets/proxy-domain.mrs
+  domestic-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/domestic-domain.mrs'
+    path: ./rulesets/domestic-domain.mrs
+  domestic-ip:
+    <<: *ip_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/domestic-ip.mrs'
+    path: ./rulesets/domestic-ip.mrs
+  fakeip_filter-domain:
+    <<: *domain_mrs
+    url: 'https://gh.oevery.me/raw.githubusercontent.com/oevery/mihomo-config/release/fakeip_filter-domain.mrs'
+    path: ./rulesets/fakeip_filter-domain.mrs
+
+rules:
+  - RULE-SET,direct-domain,直连
+  - RULE-SET,direct-classical,直连,no-resolve
+  - RULE-SET,direct-ip,直连,no-resolve
+  - RULE-SET,ai-domain,AI
+  - RULE-SET,ai-classical,AI,no-resolve
+  - RULE-SET,ai-ip,AI,no-resolve
+  - RULE-SET,domestic_services-domain,国内
+  - RULE-SET,speedtest-domain,测速
+  - RULE-SET,game_download-domain,游戏下载
+  - RULE-SET,global_media-domain,国外媒体
+  - RULE-SET,global_media-classical,国外媒体,no-resolve
+  - RULE-SET,global_media-ip,国外媒体,no-resolve
+  - RULE-SET,telegram-domain,Telegram
+  - RULE-SET,telegram-ip,Telegram,no-resolve
+  - RULE-SET,apple-domain,Apple
+  - RULE-SET,microsoft-domain,Microsoft
+  - RULE-SET,proxy-domain,代理
+  - RULE-SET,domestic-domain,国内
+  - RULE-SET,domestic-ip,国内
+  - MATCH,兜底
