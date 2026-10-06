@@ -24,7 +24,7 @@ it('connects emitted partitions by business and limits DNS resolution to domesti
   const config = parse(createRouting(result, configuredRulesets), { merge: true })
   const providers = config['rule-providers'] as Record<string, { url: string, path: string, behavior: string, format: string }>
   const rules = config.rules as string[]
-  assert(rules.every(rule => rule.startsWith('RULE-SET,') || rule.startsWith('MATCH,')))
+  assert(rules.every(rule => rule.startsWith('RULE-SET,') || rule.startsWith('MATCH,') || rule === 'AND,((DOMAIN,auth.openai.com),(NETWORK,UDP)),REJECT'))
   const files = new Set(result.rulesets.flatMap(output => Object.values(output.files).map(file => file.text)))
   for (const [name, provider] of Object.entries(providers)) {
     assert(files.has(basename(provider.path)), name)
@@ -60,6 +60,7 @@ it('connects emitted partitions by business and limits DNS resolution to domesti
     'RULE-SET,ads-domain,拦截防护',
     'RULE-SET,direct-domain,直连',
     'RULE-SET,direct-ip,直连,no-resolve',
+    'AND,((DOMAIN,auth.openai.com),(NETWORK,UDP)),REJECT',
     'RULE-SET,ai-domain,AI',
     'RULE-SET,ai-classical,AI,no-resolve',
     'RULE-SET,ai-ip,AI,no-resolve',
@@ -82,9 +83,9 @@ it('connects emitted partitions by business and limits DNS resolution to domesti
   const invalid = await build({ outDir: join(directory, 'invalid'), mrs: false, rulesets: [defineRuleset('invalid', { add: { classical: ['GEOSITE,cn'] } })] })
   assert.throws(() => createRouting(invalid, configuredRulesets), /requires geodata/)
   const selected = parse(createRouting(result, [defineRuleset('ai', { policy: '代理' })]), { merge: true })
-  assert.deepEqual(selected.rules, ['RULE-SET,ai-domain,代理', 'RULE-SET,ai-classical,代理,no-resolve', 'RULE-SET,ai-ip,代理,no-resolve', 'MATCH,兜底'])
+  assert.deepEqual(selected.rules, ['AND,((DOMAIN,auth.openai.com),(NETWORK,UDP)),REJECT', 'RULE-SET,ai-domain,代理', 'RULE-SET,ai-classical,代理,no-resolve', 'RULE-SET,ai-ip,代理,no-resolve', 'MATCH,兜底'])
   const resolving = parse(createRouting(result, [defineRuleset('ai', { policy: '代理', noResolve: false })]), { merge: true })
-  assert.deepEqual(resolving.rules, ['RULE-SET,ai-domain,代理', 'RULE-SET,ai-classical,代理', 'RULE-SET,ai-ip,代理', 'MATCH,兜底'])
+  assert.deepEqual(resolving.rules, ['AND,((DOMAIN,auth.openai.com),(NETWORK,UDP)),REJECT', 'RULE-SET,ai-domain,代理', 'RULE-SET,ai-classical,代理', 'RULE-SET,ai-ip,代理', 'MATCH,兜底'])
   const defaultDomestic = parse(createRouting(result, [defineRuleset('domestic', { policy: '国内' })]), { merge: true })
   assert.deepEqual(defaultDomestic.rules, ['RULE-SET,domestic-domain,国内', 'RULE-SET,domestic-ip,国内,no-resolve', 'MATCH,兜底'])
 })
