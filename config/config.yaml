@@ -237,6 +237,7 @@ rules:
   - RULE-SET,direct-classical,直连,no-resolve
   - RULE-SET,direct-ip,直连,no-resolve
   - AND,((DOMAIN,auth.openai.com),(NETWORK,UDP)),REJECT
+  - AND,((DOMAIN,api.bingyun.vip),(NETWORK,UDP)),REJECT
   - RULE-SET,ai-domain,AI
   - RULE-SET,ai-classical,AI,no-resolve
   - RULE-SET,ai-ip,AI,no-resolve
