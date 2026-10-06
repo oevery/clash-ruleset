@@ -64,8 +64,10 @@ jobs:
           gh auth setup-git
           repo="https://github.com/$GITHUB_REPOSITORY.git"
           target="$RUNNER_TEMP/ruleset-release"
+          previous=""
           if git ls-remote --exit-code --heads "$repo" release; then
             git clone --depth 1 --branch release "$repo" "$target"
+            previous=$(git -C "$target" rev-parse HEAD)
           else
             git init "$target"
             git -C "$target" checkout --orphan release
@@ -77,6 +79,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff --cached --quiet; then
-            git commit -m "chore: update generated rulesets"
-            git push origin HEAD:release
+            # 不指定父提交，仅发布最新快照；远端已变化时拒绝覆盖。
+            snapshot=$(git commit-tree "$(git write-tree)" -m "chore: update generated rulesets")
+            git push --force-with-lease="refs/heads/release:$previous" origin "$snapshot:refs/heads/release"
           fi
