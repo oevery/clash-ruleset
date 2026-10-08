@@ -47,9 +47,9 @@ export function createRouting(result: BuildResult, rulesets: readonly Ruleset[],
       continue
     if (!result.rulesets.some(output => output.name === name))
       throw new Error(`Missing routing ruleset: ${name}`)
-    // 指定域名禁用 UDP，避免不支持 UDP 的 AI 落地被跳过后落到其他地区。
-    if (name === 'ai')
-      rules.push('AND,((DOMAIN,auth.openai.com),(NETWORK,UDP)),REJECT', 'AND,((DOMAIN,api.bingyun.vip),(NETWORK,UDP)),REJECT')
+    // AI 域名仅禁用 UDP/443，避免 QUIC 绕过落地，同时保留其他端口。
+    if (name === 'ai' && names.has('ai-domain'))
+      rules.push('AND,((RULE-SET,ai-domain),(NETWORK,UDP),(DST-PORT,443)),REJECT')
     // 同一业务的分区相邻；解析策略由分类声明控制，domain 不需要该参数。
     for (const suffix of ['domain', 'classical', 'ip']) {
       const provider = `${name}-${suffix}`
