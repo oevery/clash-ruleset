@@ -1,0 +1,9 @@
+DOMAIN-KEYWORD,mac-torrent-download
+PROCESS-NAME,AdGuardHome
+PROCESS-NAME,ToDesk
+PROCESS-NAME,ToDesk_Service
+PROCESS-NAME,easytier-core
+PROCESS-NAME,easytier-gui
+PROCESS-NAME,leigod
+PROCESS-NAME,leishenSdk
+PROCESS-NAME,nmap
